@@ -66,6 +66,7 @@ int main(void)
 			edit_buisiness_card();
 			break;
 		case DELETE:
+			delete_buisiness_card();
 			break;
 		case PRINT:
 			show_all_cards();
