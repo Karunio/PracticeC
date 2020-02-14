@@ -11,7 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_CARDS	50
 #define BUFFER_LEN	50
 #define SAVED_FILE	"card_data.txt"
 
@@ -31,10 +30,11 @@ struct _Card {
 	char* name;
 	char* phone;
 	char* email;
+	Card* next;
 };
 
-Card g_Cards[MAX_CARDS];
-int g_count = 0, g_number = 1;
+Card* g_Cards = NULL;
+int g_number = 1;
 
 void input_business_card();
 void show_all_cards();
@@ -44,6 +44,9 @@ void delete_buisiness_card();
 void release();
 void load(char* filename);
 void save(char* filename);
+Card* GenCard(char* name, char* phone, char* email);
+void InsertCard(char* name, char* phone, char* email);
+void DeleteCard(int number);
 
 // 메인함수
 int main(void)
@@ -111,14 +114,16 @@ void input_business_card()
 	char* email = (char*)calloc(sizeof(char), strlen(buffer) + 1);
 	strcpy(email, buffer);
 
+	Card* current = g_Cards;
 	int check = 0;
-	for (int i = 0; i < g_count; i++)
+	while (current != NULL)
 	{
-		if (strcmp(g_Cards[i].name, name) == 0 && strcmp(g_Cards[i].phone, phone) == 0)
+		if (strcmp(name, current->name) == 0 && strcmp(phone, current->name) == 0)
 		{
 			check = 1;
 			break;
 		}
+		current = current->next;
 	}
 
 	if (check == 1)
@@ -132,48 +137,48 @@ void input_business_card()
 	}
 	else
 	{
-		g_Cards[g_count].email = email;
-		g_Cards[g_count].name = name;
-		g_Cards[g_count].phone = phone;
-		g_Cards[g_count].number = g_number++;
-		g_count++;
+		InsertCard(name, phone, email);
 	}
 }
 
 void show_all_cards()
 {
-	for (int i = 0; i < g_count; i++)
+	Card* current = g_Cards;
+	while (current != NULL)
 	{
-		printf("명함번호 : %d\n", g_Cards[i].number);
-		printf("이름 : %s\n", g_Cards[i].name);
-		printf("폰번호 : %s\n", g_Cards[i].phone);
-		printf("이메일 : %s\n", g_Cards[i].email);
+		printf("명함번호 : %d\n", current->number);
+		printf("이름 : %s\n", current->name);
+		printf("폰번호 : %s\n", current->phone);
+		printf("이메일 : %s\n", current->email);
 		printf("\n");
+
+		current = current->next;
 	}
 }
 
 void search_business_card(int num)
 {
-	int target_index = -1;
-	for (int i = 0; i < g_count; i++)
+	Card* current = g_Cards, * target = NULL;
+
+	while (current != NULL)
 	{
-		if (g_Cards[i].number == num)
+		if (current->number == num)
 		{
-			target_index = i;
+			target = current;
 			break;
 		}
 	}
 
-	if (target_index == -1)
+	if (target == NULL)
 	{
 		printf("찾으시는 명함이 없습니다\n");
 	}
 	else
 	{
-		printf("명함번호 : %d\n", g_Cards[target_index].number);
-		printf("이름 : %s\n", g_Cards[target_index].name);
-		printf("폰번호 : %s\n", g_Cards[target_index].phone);
-		printf("이메일 : %s\n", g_Cards[target_index].email);
+		printf("명함번호 : %d\n", target->number);
+		printf("이름 : %s\n", target->name);
+		printf("폰번호 : %s\n", target->phone);
+		printf("이메일 : %s\n", target->email);
 		printf("\n");
 	}
 
@@ -184,21 +189,23 @@ void search_business_card(int num)
 
 void edit_buisiness_card()
 {
-	int target_index = -1, number;
-
+	int number;
 	printf("수정할 명함번호를 입력해주세요 : ");
 	scanf("%d", &number);
 
-	for (int i = 0; i < g_count; i++)
+
+	Card* current = g_Cards;
+	Card* target = NULL;
+	while (current != NULL)
 	{
-		if (g_Cards[i].number == number)
+		if (current->number == number)
 		{
-			target_index = i;
+			target = current;
 			break;
 		}
 	}
 
-	if (target_index == -1)
+	if (target == NULL)
 	{
 		printf("찾으시는 명함이 없습니다\n");
 	}
@@ -209,17 +216,17 @@ void edit_buisiness_card()
 
 		printf("폰번호 : ");
 		scanf("%s", buffer);
-		free(g_Cards[target_index].phone);
+		free(target->phone);
 		char* phone = (char*)calloc(sizeof(char), strlen(buffer) + 1);
 		strcpy(phone, buffer);
-		g_Cards[target_index].phone = phone;
+		target->phone = phone;
 
 		printf("이메일 : ");
 		scanf("%s", buffer);
-		free(g_Cards[target_index].email);
+		free(target->email);
 		char* email = (char*)calloc(sizeof(char), strlen(buffer) + 1);
 		strcpy(email, buffer);
-		g_Cards[target_index].email = email;
+		target->email = email;
 	}
 
 
@@ -231,48 +238,59 @@ void delete_buisiness_card()
 {
 	show_all_cards();
 
-	int number, index = -1;
+	Card* target = NULL;
+	int number;
 	printf("삭제할 명함번호를 입력하세요 : ");
 	scanf("%d", &number);
 
-	for (int i = 0; i < g_count; i++)
+	Card* current = g_Cards;
+	Card* prev = NULL;
+	while (current != NULL)
 	{
-		if (g_Cards[i].number == number)
+		if (current->number == number)
 		{
-			index = i;
+			target = current;
 			break;
 		}
+		prev = current;
+		current = current->next;
 	}
 
-	if (index == -1)
+	if (target == NULL)
 	{
 		printf("없는 명함번호 입니다.\n");
 		system("pause");
 	}
 	else
 	{
-		free(g_Cards[index].name);
-		free(g_Cards[index].phone);
-		free(g_Cards[index].email);
-
-		for (int i = index; i < g_count - 1; i++)
+		if (target == g_Cards)
 		{
-			g_Cards[i].number = g_Cards[i + 1].number;
-			g_Cards[i].name = g_Cards[i + 1].name;
-			g_Cards[i].phone = g_Cards[i + 1].phone;
-			g_Cards[i].email = g_Cards[i + 1].email;
+			g_Cards = target->next;
 		}
-		g_count--;
+		else
+		{
+			prev->next = target->next;
+		}
+		free(target->name);
+		free(target->phone);
+		free(target->email);
+		free(target);
 	}
 }
 
 void release()
 {
-	for (int i = 0; i < g_count; i++)
+	Card* current = g_Cards;
+
+	while (current != NULL)
 	{
-		free(g_Cards[i].name);
-		free(g_Cards[i].phone);
-		free(g_Cards[i].email);
+		Card* target = current;
+		current = current->next;
+
+		free(target->name);
+		free(target->phone);
+		free(target->email);
+		free(target);
 	}
 }
 
@@ -290,24 +308,21 @@ void load(char* filename)
 			fgets(buffer, BUFFER_LEN - 1, file);
 
 			char* token = strtok(buffer, "#");
-			g_Cards[g_count].number = atoi(token);
+			int number = atoi(token);
 
 			token = strtok(NULL, "#");
 			char* name = (char*)calloc(sizeof(char), strlen(token) + 1);
 			strcpy(name, token);
-			g_Cards[g_count].name = name;
 
 			token = strtok(NULL, "#");
 			char* phone = (char*)calloc(sizeof(char), strlen(token) + 1);
 			strcpy(phone, token);
-			g_Cards[g_count].phone = phone;
 
 			token = strtok(NULL, "#");
 			char* email = (char*)calloc(sizeof(char), strlen(token) + 1);
 			strcpy(email, token);
-			g_Cards[g_count].email = email;
 
-			g_count++;
+			InsertCard(name, phone, email);
 		}
 		fclose(file);
 	}
@@ -320,14 +335,49 @@ void save(char* filename)
 	if (file != NULL)
 	{
 		fprintf(file, "%d", g_number);
-		for (int i = 0; i < g_count; i++)
+
+		Card* current = g_Cards;
+		while (current != NULL)
 		{
 			fprintf(file, "\n%d#%s#%s#%s",
-				g_Cards[i].number,
-				g_Cards[i].name,
-				g_Cards[i].phone,
-				g_Cards[i].email);
+				current->number,
+				current->name,
+				current->phone,
+				current->email);
+
+			current = current->next;
 		}
 		fclose(file);
+	}
+}
+
+Card* GenCard(char* name, char* phone, char* email)
+{
+	Card* tCard = (Card*)calloc(sizeof(Card), 1);
+	tCard->number = g_number++;
+	tCard->name = name;
+	tCard->phone = phone;
+	tCard->email = email;
+	tCard->next = NULL;
+
+	return tCard;
+}
+
+void InsertCard(char* name, char* phone, char* email)
+{
+	if (g_Cards == NULL)
+	{
+		g_Cards = GenCard(name, phone, email);
+	}
+	else
+	{
+		Card* current;
+		current = g_Cards;
+		while (current->next != NULL)
+		{
+			current = current->next;
+		}
+
+		current->next = GenCard(name, phone, email);
 	}
 }
